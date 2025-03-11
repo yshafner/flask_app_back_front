@@ -14,7 +14,11 @@ import datetime
 from tqdm import tqdm
 from supabase import create_client
 import math
-
+import requests
+import json
+import time
+import os
+import random
 
 # empty the apple tracks json
 with open('apple_tracks.json', 'w') as f:
@@ -843,13 +847,203 @@ def run_main_task():
     time.sleep(3)
 
 
+
+def get_curator_playlists(storefront, curator_id, jwt_token, max_retries=3, limit=500):
+    base_url = f"https://api.music.apple.com/v1/catalog/{storefront}/apple-curators/{curator_id}/playlists"
+    headers = {
+        "Authorization": f"Bearer {jwt_token}"
+    }
+    
+    all_playlists = []
+    next_url = base_url
+    
+    while next_url and len(all_playlists) < limit:
+        # Make request to current URL with retry logic
+        retries = 0
+        success = False
+        
+        while not success and retries <= max_retries:
+            response = requests.get(next_url, headers=headers)
+            
+            if response.status_code == 200:
+                success = True
+            elif response.status_code == 429:
+                retries += 1
+                if retries <= max_retries:
+                    wait_time = 30 + random.randint(0, 10)  # 30-40 second wait
+                    print(f"Rate limited (429). Retry {retries}/{max_retries} after {wait_time} seconds...")
+                    time.sleep(wait_time)
+                else:
+                    print(f"Failed after {max_retries} retries. Moving to next URL.")
+                    break
+            else:
+                print(f"Error fetching playlists for curator {curator_id}: {response.status_code}")
+                break
+        
+        if not success:
+            break
+            
+        data = response.json()
+        
+        # Extract playlist info
+        if 'data' in data:
+            for playlist in data['data']:
+                if len(all_playlists) >= limit:
+                    break
+                    
+                playlist_info = {
+                    'curator_id': curator_id,
+                    'playlist_id': playlist['id'],
+                    'name': playlist['attributes']['name'] if 'name' in playlist['attributes'] else '',
+                    'url': playlist['attributes']['url'] if 'url' in playlist['attributes'] else '',
+                }
+                
+                # Extract artwork URL if available
+                if 'artwork' in playlist['attributes'] and 'url' in playlist['attributes']['artwork']:
+                    artwork_url = playlist['attributes']['artwork']['url']
+                    # Replace {w} and {h} with actual dimensions
+                    artwork_url = artwork_url.replace('{w}', '1000').replace('{h}', '1000')
+                    playlist_info['artwork_url'] = artwork_url
+                else:
+                    playlist_info['artwork_url'] = ''
+                
+                all_playlists.append(playlist_info)
+                
+                # Show progress
+                if len(all_playlists) % 10 == 0:
+                    print(f"Fetched {len(all_playlists)} / {limit} playlists for curator {curator_id}")
+        
+        # Check if there's a next batch
+        if 'next' in data and data['next'] and len(all_playlists) < limit:
+            next_url = f"https://api.music.apple.com{data['next']}"
+        else:
+            next_url = None
+        
+        # Add a small delay to avoid rate limiting
+        time.sleep(0.5)
+    
+    print(f"Completed fetching {len(all_playlists)} total playlists for curator {curator_id}")
+    return all_playlists
+
+def save_playlists_to_json(playlists, output_file):
+    """
+    Save or append playlists to a JSON file.
+    
+    Parameters:
+    - playlists: List of playlist data to save
+    - output_file: Filename to save to
+    """
+    # Load existing data if file exists
+    existing_data = []
+    if os.path.exists(output_file):
+        with open(output_file, 'r', encoding='utf-8') as f:
+            try:
+                existing_data = json.load(f)
+            except json.JSONDecodeError:
+                # If the file is empty or invalid JSON, start fresh
+                existing_data = []
+    
+    # Append new playlists
+    existing_data.extend(playlists)
+    
+    # Save all playlists to the JSON file
+    with open(output_file, 'w', encoding='utf-8') as f:
+        json.dump(existing_data, f, ensure_ascii=False, indent=2)
+    
+    return len(existing_data)
+
+
     
     
 if __name__ == "__main__":
-
-    input_file = 'apple_playlist_urls.json'
-    process_playlist_json_file(input_file)
+    #empty the file
+    with open('apple_playlist_urls.json', 'w') as f:
+        json.dump([], f)
     
+    jwt_token = generate_apple_jwt()
+    if not jwt_token:
+        print("Failed to generate JWT token. Exiting.")
+        sys.exit(1)
+    
+    print(f"Generated new JWT token successfully")
+    
+    # Store front
+    storefront = "us"
+    
+    # Output JSON file
+    output_file = "apple_music_playlists.json"
+    
+    # List of curator IDs
+    curator_ids = [
+        '976439587',  # Worldwide
+        '976439553',  # Urbano Latino
+        '1532467784',  # Up Next
+        '1564180390',  # Spatial Audio
+        '976439585',  # Soul/Funk
+        '1558257257',  # Sleep
+        '976439554',  # Rock
+        '976439552',  # Reggae
+        '1531543191',  # Apple Music Radio
+        '976439551',  # R&B
+        '976439548',  # Pop
+        '976439549',  # Pop Latino
+        '1558257035',  # Party
+        '976439547',  # Oldies
+        '1558257146',  # Motivation
+        '976439543',  # Metal
+        '976439544',  # Música Mexicana
+        '1649426593',  # Apple Music Live
+        '1531542847',  # Latin
+        '976439538',  # Kids
+        '988658197',  # K-Pop
+        '976439542',  # Jazz
+        '976439541',  # Indie
+        '1526756058',  # Hits
+        '976439539',  # Hip-Hop
+        '979231690',  # Hard Rock
+        '1558256909',  # Fitness
+        '976439586',  # Film, TV & Stage
+        '1558256919',  # Feel Good
+        '1555173397',  # Family
+        '1558256771',  # Essentials
+        '976439536',  # Electronic
+        '1441811365',  # DJ Mixes
+        '1554938339',  # Decades
+        '976439535',  # Dance
+        '976439534',  # Country
+        '976439532',  # Classical
+        '976439531',  # Classic Rock
+        '1558256251',  # Chill
+        '976439528',  # Blues
+        '1554941247',  # Behind the Songs
+        '976439527',  # Americana
+        '976439526',  # Alternative
+        '1747003654',  # Afrobeats
+        '1526866189',  # '80s
+        '1526866635',  # 2000s
+        '1482068485'   # Christian
+    ]
+    # Process each curator and save after each one
+    for i, curator_id in enumerate(curator_ids):
+        print(f"\nProcessing curator {i+1}/{len(curator_ids)}: {curator_id}")
+        
+        # Get playlists for this curator
+        playlists = get_curator_playlists(storefront, curator_id, jwt_token, 800) # 500 is the limit
+        
+        # Save/append to JSON file after each curator
+        total_saved = save_playlists_to_json(playlists, output_file)
+        print(f"Saved curator {curator_id} playlists. Total playlists in file: {total_saved}")
+        
+        # Add a delay between curator requests to avoid rate limiting
+        time.sleep(1)
+    
+    print(f"\nAll done! All playlists have been saved to {output_file}")
+    
+    
+    input_file = 'apple_playlist_urls.json'
+    
+    process_playlist_json_file(input_file)
+
     json_file_path = "apple_tracks.json"
     if os.path.exists(json_file_path):
         update_database_apple()

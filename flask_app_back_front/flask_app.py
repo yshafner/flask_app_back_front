@@ -371,7 +371,7 @@ def api_request_with_retry(url, headers, params=None, method="GET", data=None, m
 def get_playlists_for_track_from_spotify_supabase(track_id=None, track_name=None, artist_names=None):
     """
     Find playlists containing a track using Supabase database for Spotify.
-    Uses blue-green deployment tables.
+    Uses blue-green deployment tables and more flexible matching like Apple Music's implementation.
     
     Args:
         track_id (str, optional): The Spotify track ID
@@ -388,60 +388,59 @@ def get_playlists_for_track_from_spotify_supabase(track_id=None, track_name=None
         # Create query using the active table
         query = spotify_supabase.table(table_name)
         
-        if track_name and artist_names:
+        if track_name:
             # Clean track name - lowercase
             track_name = track_name.lower()
             
-            # Get data and filter in Python
-            # For large tables, we need a simple condition to filter first
-            if track_id:
-                # If we have track ID, we can do more efficient filtering
-                track_url = f"https://open.spotify.com/track/{track_id}"
-                data = query.select("*").eq("song_url", track_url).limit(100).execute()
-            else:
-                # Basic query with limit - we'll filter in code
-                data = query.select("*").limit(500).execute()
-            
+            # Use ilike for case-insensitive search similar to Apple Music implementation
+            data = query.select("*").ilike("song_name", f"{track_name}").execute()
+
+                
             if not data.data:
-                logger.info(f"No Spotify playlists found for {track_name} by {artist_names}")
+                logger.info(f"No Spotify playlists found for {track_name}")
                 return []
-            
-            # Filter results post-query for track name
-            filtered_by_name = []
-            for item in data.data:
-                db_song_name = item.get("song_name", "").lower()
-                if track_name in db_song_name:
-                    filtered_by_name.append(item)
-            
-            # If artists are provided, filter further
-            if isinstance(artist_names, str):
-                # If artists is a comma-separated string, split it
-                artist_list = [a.strip() for a in artist_names.split(',')]
-            else:
-                artist_list = artist_names
-            
-            # Now filter results to match artists
-            filtered_results = []
-            for item in filtered_by_name:
-                # Get artists from the database
-                db_artists = item.get("artist_names", [])
-                if not db_artists:
-                    continue
                 
-                # Check if any artist from our search matches any artist in the DB
-                match_found = False
-                for search_artist in artist_list:
-                    search_artist_lower = search_artist.lower()
+            # If artists are provided, filter by artists
+            filtered_results = data.data
+            
+            if artist_names:
+                # Process artist names
+                if isinstance(artist_names, str):
+                    artist_list = [a.strip().lower() for a in artist_names.split(',')]
+                else:
+                    artist_list = [a.lower() for a in artist_names if isinstance(a, str)]
+                
+                # Filter by artists
+                artist_filtered = []
+                for item in filtered_results:
+                    db_artists = item.get("artist_names", [])
+                    if not db_artists:
+                        continue
+                    
+                    match_found = False
                     for db_artist in db_artists:
-                        if isinstance(db_artist, str) and search_artist_lower in db_artist.lower():
-                            match_found = True
+                        if not isinstance(db_artist, str):
+                            continue
+                            
+                        db_artist_lower = db_artist.lower()
+                        for search_artist in artist_list:
+                            search_artist_lower = search_artist.lower()
+                            # Using the same comparison logic as Apple Music
+                            if db_artist_lower in search_artist_lower:
+                                match_found = True
+                                break
+                        if match_found:
                             break
+
+
+                    # This should be OUTSIDE the db_artist loop but inside the item loop
                     if match_found:
-                        break
-                
-                if match_found:
-                    filtered_results.append(item)
+                        artist_filtered.append(item)
+                        
+                        
+                filtered_results = artist_filtered
             
+            # Format the results
             playlists = []
             seen_urls = set()
             
@@ -460,8 +459,16 @@ def get_playlists_for_track_from_spotify_supabase(track_id=None, track_name=None
                         'followers': item.get("playlist_followers", 0),
                         'tracks_count': item.get("playlist_tracks_count", 0)
                     })
+
+                
             
-            logger.info(f"Found {len(playlists)} Spotify playlists from {table_name} for track {track_name}")
+            logger.info(f"Found {len(playlists)} Spotify playlists for track '{track_name}'")
+            if len(playlists) == 0:
+                logger.info("Found songs in database but no playlists after filtering")
+                # Log the songs found to help debug
+                for idx, item in enumerate(filtered_results[:5]):
+                    logger.info(f"Song {idx+1}: {item.get('song_name')} by {item.get('artist_names')}")
+            
             return playlists
             
         elif track_id:
@@ -501,8 +508,10 @@ def get_playlists_for_track_from_spotify_supabase(track_id=None, track_name=None
             
     except Exception as e:
         logger.error(f"Error getting Spotify playlists from Supabase: {str(e)}")
+        # Log the error traceback for better debugging
+        import traceback
+        logger.error(traceback.format_exc())
         return []
-
 def search_spotify_track_fuzzy(track_name, artist_name=None):
     """
     Search for a Spotify track in Supabase using fuzzy matching.
@@ -865,17 +874,16 @@ def get_playlists_for_track_from_apple_supabase(track_id=None, track_name=None, 
             track_name = track_name.lower()
             
             # Use ilike for case-insensitive search across the entire database
-            search_query = query.select("*").ilike("song_name", f"%{track_name}%")
-                
-                
-            data = query.select("*").ilike("song_name", f"%{track_name}%").execute()
+            data = query.select("*").ilike("song_name", f"{track_name}").execute()
 
-            
+                
             
             # Execute the query without limits to search the entire database
-            data = search_query.execute()
             with open("SearchQuery.txt", "w", encoding="utf-8") as f:
                 f.write(str(data))
+                
+                
+                
             if not data.data:
                 logger.info(f"No Apple Music playlists found for {track_name}")
                 return []
@@ -907,9 +915,7 @@ def get_playlists_for_track_from_apple_supabase(track_id=None, track_name=None, 
                         for search_artist in artist_list:
                             search_artist_lower = search_artist.lower()
                             # Reversed comparison: check if db_artist is in search_artist
-                            print(f"Checking if '{db_artist_lower}' is in '{search_artist_lower}'")
                             if db_artist_lower in search_artist_lower:
-                                print(f"Match found: '{db_artist_lower}' is in '{search_artist_lower}'")
                                 match_found = True
                                 break
                                 
@@ -919,7 +925,7 @@ def get_playlists_for_track_from_apple_supabase(track_id=None, track_name=None, 
                     # This should be OUTSIDE the db_artist loop but inside the item loop
                     if match_found:
                         artist_filtered.append(item)
-                
+              
                 filtered_results = artist_filtered
             
             # Format the results
