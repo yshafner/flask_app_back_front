@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playlist Reporter | Find Editorial Playlists</title>
+    <style>
+        :root {
+            --primary-gray: #333333;
+            --light-gray: #e0e0e0;
+            --medium-gray: #9e9e9e;
+            --dark-gray: #242424;
+            --coral: #FF6347;
+            --coral-light: #FF7F6E;
+            --coral-dark: #E5503C;
+            --white: #FFFFFF;
+            --gradient-start: #e6e6e6;
+            --gradient-middle: #d9d9e6;
+            --gradient-end: #ffd6cc;
+            --card-bg: #333333;
+            --hover-bg: #444444;
+            --apple-red: #FA243C;
+            --amazon-blue: #00A8E1;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Circular', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        
+        body {
+            background-color: #333333;
+            color: var(--primary-gray);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-middle), var(--gradient-end));
+            padding: 2rem 0;
+            text-align: center;
+        }
+        
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+        
+        .logo {
+            height: 50px;
+            margin-right: 10px;
+            object-fit: contain;
+        }
+        
+        .title {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--coral);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            color: var(--primary-gray);
+        }
+        .search-container {
+            max-width: 700px;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 1rem 3rem;
+            border-radius: 50px;
+            border: none;
+            background-color: var(--white);
+            color: var(--primary-gray);
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            outline: none;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .search-input:focus {
+            background-color: var(--white);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        }
+        
+        .search-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #AAAAAA;
+        }
+        
+        .search-btn {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: var(--coral);
+            color: var(--white);
+            border: none;
+            border-radius: 50px;
+            padding: 0.7rem 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .search-btn:hover {
+            background-color: var(--coral-dark);
+            transform: translateY(-50%) scale(1.05);
+        }
+
+        .tabs-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            padding: 0 2rem;
+            margin-top: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 0.8rem 2rem;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 50px;
+            background-color: #f0f0f0;
+            color: #777777;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border: 2px solid transparent;
+        }
+        
+        .tab:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .tab.active-spotify {
+            background-color: var(--coral);
+            color: white;
+            box-shadow: 0 4px 10px rgba(255, 99, 71, 0.4);
+        }
+        
+        .tab.active-apple {
+            background-color: var(--apple-red);
+            color: white;
+            box-shadow: 0 4px 10px rgba(250, 36, 60, 0.4);
+        }
+        
+        .tab.active-amazon {
+            background-color: var(--amazon-blue);
+            color: white;
+            box-shadow: 0 4px 10px rgba(0, 168, 225, 0.4);
+        }
+
+        /* Additional styles for Amazon tab */
+        .tab.amazon-tab {
+            background-color: #f0f0f0;
+            color: #777777;
+            position: relative;
+        }
+        
+        .tab.amazon-tab:hover {
+            background-color: #e5e5e5;
+        }
+        
+        .tab.active-amazon {
+            background-color: var(--amazon-blue);
+            color: white;
+            box-shadow: 0 4px 10px rgba(0, 168, 225, 0.4);
+        }
+        
+        /* Modal styles for the coming soon message */
+        .amazon-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .amazon-modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .amazon-modal h3 {
+            color: var(--amazon-blue);
+            margin-bottom: 15px;
+        }
+        
+        .amazon-modal p {
+            margin-bottom: 20px;
+        }
+        
+        .amazon-modal button {
+            padding: 8px 20px;
+            background-color: var(--amazon-blue);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .amazon-modal button:hover {
+            background-color: #0090c1;
+        }
+
+
+        
+        .tab.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            pointer-events: none;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .placeholder-content {
+            text-align: center;
+            padding: 5rem 0;
+            color: #AAAAAA;
+        }
+        
+        .placeholder-content h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .placeholder-content p {
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        main {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        .loading-container {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem 0;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 99, 71, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--coral);
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        
+        /* Results container with improved grid layout */
+        .results-container {
+            display: none;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        /* Playlist card with rectangular design */
+        .playlist-card {
+            background-color: var(--white);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .playlist-card:hover {
+            background-color: var(--white);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* Rectangular image aspect ratio */
+        .playlist-image {
+            width: 100%;
+            aspect-ratio: 16/9;
+            object-fit: cover;
+        }
+        
+        /* Info section with flex layout */
+        .playlist-info {
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            justify-content: space-between;
+        }
+        
+        .playlist-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--primary-gray);
+        }
+        
+        .playlist-description {
+            color: var(--medium-gray);
+            font-size: 0.9rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+            height: 2.7rem;
+        }
+        
+        /* Actions and meta information */
+        .playlist-actions {
+            margin-top: auto;
+        }
+        
+        .playlist-meta {
+            display: flex;
+            align-items: center;
+            color: var(--medium-gray);
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .playlist-tracks, .playlist-followers {
+            margin-right: 1rem;
+        }
+        
+        .spotify-link {
+            display: inline-block;
+            background-color: var(--coral);
+            color: var(--white);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin-top: 0.5rem;
+        }
+        
+        .spotify-link:hover {
+            background-color: var(--coral-dark);
+            transform: scale(1.05);
+        }
+        
+        .apple-link {
+            display: inline-block;
+            background-color: var(--apple-red);
+            color: var(--white);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin-top: 0.5rem;
+        }
+        
+        .apple-link:hover {
+            background-color: #E50914;
+            transform: scale(1.05);
+        }
+        
+        .no-results {
+            display: none;
+            text-align: center;
+            padding: 3rem 0;
+            color: #AAAAAA;
+        }
+        
+        .no-results h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .track-info {
+            display: none;
+            background-color: var(--white);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        
+        .track-image {
+            width: 100px;
+            height: 100px;
+            border-radius: 4px;
+            object-fit: cover;
+            margin-right: 1.5rem;
+        }
+        
+        .track-details {
+            flex: 1;
+        }
+        
+        .track-details h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary-gray);
+        }
+        
+        .track-details p {
+            color: var(--medium-gray);
+            margin-bottom: 0.5rem;
+        }
+        
+        .track-badge {
+            display: inline-block;
+            background-color: rgba(255, 99, 71, 0.2);
+            color: var(--coral-dark);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+        
+        footer {
+            background-color: var(--primary-gray);
+            padding: 1.5rem;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--light-gray);
+        }
+        
+        /* Download CSV button styles */
+        .download-btn-container {
+            display: none;
+            justify-content: flex-end;
+            margin-top: 1rem;
+        }
+        
+        .download-csv-btn {
+            background-color: var(--primary-gray);
+            color: var(--white);
+            border: none;
+            border-radius: 4px;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        
+        .download-csv-btn svg {
+            margin-right: 0.5rem;
+        }
+        
+        .download-csv-btn.spotify {
+            background-color: var(--coral);
+        }
+        
+        .download-csv-btn.apple {
+            background-color: var(--apple-red);
+        }
+        
+        .download-csv-btn.amazon {
+            background-color: var(--amazon-blue);
+        }
+        
+        .download-csv-btn:hover {
+            opacity: 0.9;
+            transform: scale(1.05);
+        }
+        
+        .download-csv-btn:disabled {
+            background-color: var(--medium-gray);
+            cursor: not-allowed;
+            opacity: 0.7;
+            transform: none;
+        }
+        
+        /* Responsive layout */
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2rem;
+            }
+            
+            .subtitle {
+                font-size: 1rem;
+                padding: 0 1rem;
+            }
+            
+            .search-container {
+                padding: 0 1rem;
+            }
+            
+            .results-container {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            }
+            
+            .track-info {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .track-image {
+                margin-right: 0;
+                margin-bottom: 1rem;
+            }
+            
+            .tabs {
+                flex-wrap: wrap;
+            }
+            
+            .tab {
+                padding: 0.8rem 1.2rem;
+                font-size: 1rem;
+            }
+            
+            .download-btn-container {
+                justify-content: center;
+            }
+        }
+        
+        /* For very small screens */
+        @media (max-width: 480px) {
+            .results-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <!-- Using the logo.png image file -->
+            <img src="/static/images/logo.png" alt="Playlist Reporter Logo" class="logo">
+            <h1 class="title">Playlist Reporter</h1>
+        </div>
+        <p class="subtitle">Find Editorial Playlists Featuring Your Favorite Songs</p>
+
+        <div class="search-container">
+            <svg class="search-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="#AAAAAA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M21 21L16.65 16.65" stroke="#AAAAAA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <input type="text" id="search-input" class="search-input" placeholder="Enter a song title (e.g., 'Blinding Lights')">
+            <button id="search-btn" class="search-btn">Search</button>
+        </div>
+    </header>
+    
+    <!-- Tab Navigation -->
+    <div class="tabs-container">
+        <div class="tabs">
+            <div class="tab active-spotify" data-tab="spotify">SPOTIFY</div>
+            <div class="tab" data-tab="apple">APPLE MUSIC</div>
+            <div class="tab amazon-tab" data-tab="amazon">AMAZON MUSIC</div>
+        </div>
+    </div>
+    
+    <!-- Tab Content -->
+    <main>
+        <!-- Spotify Tab Content -->
+        <div id="spotify-tab" class="tab-content active">
+            <div id="track-info" class="track-info" style="display: none;">
+                <!-- Track info will be populated here -->
+            </div>
+            
+            <!-- Download Button Container -->
+            <div id="spotify-download-container" class="download-btn-container" style="display: none;">
+                <button id="spotify-download-btn" class="download-csv-btn spotify" disabled>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8 12L3 7H6V1H10V7H13L8 12Z" fill="white"/>
+                        <path d="M2 14H14V16H2V14Z" fill="white"/>
+                    </svg>
+                    Download CSV
+                </button>
+            </div>
+            
+            <div id="loading" class="loading-container">
+                <div class="spinner"></div>
+            </div>
+            
+            <div id="no-results" class="no-results">
+                <h3>No Editorial Playlists Found</h3>
+                <p>This track doesn't appear in any Spotify editorial playlists, or we couldn't find it. Try another song!</p>
+            </div>
+            
+            <div id="results" class="results-container">
+                <!-- Results will be populated here -->
+            </div>
+        </div>
+        
+        <!-- Apple Music Tab Content -->
+        <div id="apple-tab" class="tab-content">
+            <div id="apple-track-info" class="track-info" style="display: none;">
+                <!-- Track info will be populated here -->
+            </div>
+            
+            <!-- Download Button Container -->
+            <div id="apple-download-container" class="download-btn-container" style="display: none;">
+                <button id="apple-download-btn" class="download-csv-btn apple" disabled>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8 12L3 7H6V1H10V7H13L8 12Z" fill="white"/>
+                        <path d="M2 14H14V16H2V14Z" fill="white"/>
+                    </svg>
+                    Download CSV
+                </button>
+            </div>
+            
+            <div id="apple-loading" class="loading-container">
+                <div class="spinner" style="border-top-color: var(--apple-red);"></div>
+            </div>
+            
+            <div id="apple-no-results" class="no-results">
+                <h3>No Editorial Playlists Found</h3>
+                <p>This track doesn't appear in any Apple Music editorial playlists, or we couldn't find it. Try another song!</p>
+            </div>
+            
+            <div id="apple-results" class="results-container">
+                <!-- Results will be populated here -->
+            </div>
+        </div>
+        
+        <!-- Amazon Modal -->
+        <div id="amazon-modal" class="amazon-modal">
+            <div class="amazon-modal-content">
+                <h3>Amazon Music Coming Soon!</h3>
+                <p>We're currently working on integrating Amazon Music into Playlist Reporter. This feature will be available in the near future.</p>
+                <p>Stay tuned for updates and new features!</p>
+                <button id="amazon-modal-close">Got it</button>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>For any bugs or concerns, please message us on Instagram at <a href="https://www.instagram.com/5050Ventures" target="_blank" style="color: var(--coral); text-decoration: underline;">5050Ventures</a></p>
+    </footer>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('search-input');
+            const searchBtn = document.getElementById('search-btn');
+            
+            // Common elements for both services
+            const loadingContainers = {
+                spotify: document.getElementById('loading'),
+                apple: document.getElementById('apple-loading')
+            };
+            
+            const resultsContainers = {
+                spotify: document.getElementById('results'),
+                apple: document.getElementById('apple-results')
+            };
+            
+            const noResultsContainers = {
+                spotify: document.getElementById('no-results'),
+                apple: document.getElementById('apple-no-results')
+            };
+            
+            const trackInfoContainers = {
+                spotify: document.getElementById('track-info'),
+                apple: document.getElementById('apple-track-info')
+            };
+            
+            // Download button containers
+            const downloadContainers = {
+                spotify: document.getElementById('spotify-download-container'),
+                apple: document.getElementById('apple-download-container')
+            };
+            
+            // Download buttons
+            const downloadButtons = {
+                spotify: document.getElementById('spotify-download-btn'),
+                apple: document.getElementById('apple-download-btn')
+            };
+            
+            // Store search results for CSV download
+            const searchResults = {
+                spotify: {
+                    track: null,
+                    playlists: []
+                },
+                apple: {
+                    track: null,
+                    playlists: []
+                }
+            };
+            
+            // Tab functionality
+            const tabs = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            let currentService = 'spotify'; // Default to Spotify
+            let isSearching = false; // Flag to track if a search is in progress
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabName = tab.getAttribute('data-tab');
+                    
+                    // Special handling for Amazon Music tab
+                    if (tabName === 'amazon') {
+                        showAmazonModal();
+                        return;
+                    }
+                    
+                    // Skip if tab is disabled (another search is in progress)
+                    if (tab.classList.contains('disabled')) {
+                        return;
+                    }
+                    currentService = tabName; // Update current service
+                    
+                    // Remove active classes from all tabs and contents
+                    tabs.forEach(t => {
+                        t.classList.remove('active-spotify');
+                        t.classList.remove('active-apple');
+                        t.classList.remove('active-amazon');
+                    });
+                    
+                    tabContents.forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    
+                    // Add active class to clicked tab and corresponding content
+                    tab.classList.add(`active-${tabName}`);
+                    document.getElementById(`${tabName}-tab`).classList.add('active');
+                    
+                    // Clear previous results when switching tabs
+                    const activeResultsContainer = resultsContainers[currentService];
+                    if (activeResultsContainer) {
+                        activeResultsContainer.style.display = 'none';
+                        activeResultsContainer.innerHTML = '';
+                    }
+                    
+                    const activeTrackInfo = trackInfoContainers[currentService];
+                    if (activeTrackInfo) {
+                        activeTrackInfo.style.display = 'none';
+                    }
+                    
+                    const activeNoResults = noResultsContainers[currentService];
+                    if (activeNoResults) {
+                        activeNoResults.style.display = 'none';
+                    }
+                    
+                    // If there are stored results for this service, show them
+                    if (searchResults[currentService].playlists.length > 0) {
+                        if (searchResults[currentService].track) {
+                            displayTrackInfo(searchResults[currentService].track, currentService);
+                        }
+                        displayResults(searchResults[currentService].playlists, currentService);
+                        
+                        // Show download button
+                        const downloadContainer = downloadContainers[currentService];
+                        if (downloadContainer) {
+                            downloadContainer.style.display = 'flex';
+                            downloadButtons[currentService].disabled = false;
+                        }
+                    } else if (searchInput.value.trim()) {
+                        
+                    }
+                });
+            });
+            
+            // Handle search button click
+            searchBtn.addEventListener('click', performSearch);
+            
+            // Handle Enter key press in search input
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+
+            // Format image URLs correctly
+            function formatImageUrl(url, service) {
+                if (!url) return 'https://via.placeholder.com/300x169'; // Using 16:9 ratio
+                
+                // For Apple Music URLs, ensure they're properly formatted
+                if (service === 'apple' && url.includes('mzstatic.com')) {
+                    // If it's already a complete URL, return it as is
+                    if (url.startsWith('http')) {
+                        return url;
+                    }
+                    
+                    // If it's a partial URL, make it complete
+                    if (!url.startsWith('https://')) {
+                        return `https://is1-ssl.mzstatic.com${url}`;
+                    }
+                }
+                
+                return url;
+            }
+            
+            function showAmazonModal() {
+                const modal = document.getElementById('amazon-modal');
+                modal.style.display = 'flex';
+                
+                // Close modal when the close button is clicked
+                document.getElementById('amazon-modal-close').addEventListener('click', () => {
+                    modal.style.display = 'none';
+                });
+                
+                // Close modal when clicking outside the content
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.style.display = 'none';
+                    }
+                });
+            }
+
+
+
+            // Helper function to format follower counts
+            function formatFollowers(count) {
+                if (!count) return '';
+                if (count >= 1000000) {
+                    return (count / 1000000).toFixed(1) + 'M followers';
+                } else if (count >= 1000) {
+                    return (count / 1000).toFixed(1) + 'K followers';
+                }
+                return count + ' followers';
+            }
+            
+            // Helper function to disable tabs during search
+            function setTabsEnabled(enabled) {
+                tabs.forEach(tab => {
+                    const tabName = tab.getAttribute('data-tab');
+                    if (tabName !== currentService && tabName !== 'amazon') {
+                        if (enabled) {
+                            tab.classList.remove('disabled');
+                        } else {
+                            tab.classList.add('disabled');
+                        }
+                    }
+                });
+            }
+            
+            // Helper function to convert data to CSV format
+            function convertToCSV(track, playlists) {
+                if (!track || !playlists || playlists.length === 0) {
+                    return '';
+                }
+                
+                const rows = [];
+                rows.push(['Song Name', 'Playlist Name', 'Playlist URL']);
+                
+                playlists.forEach(playlist => {
+                    rows.push([
+                        track.name.replace(/,/g, ' '),
+                        playlist.name.replace(/,/g, ' '),
+                        playlist.external_url
+                    ]);
+                });
+                
+                return rows.map(row => row.join(',')).join('\n');
+            }
+            
+            // Helper function to download CSV file
+            function downloadCSV(service) {
+                const track = searchResults[service].track;
+                const playlists = searchResults[service].playlists;
+                
+                if (!track || playlists.length === 0) {
+                    alert('No data available to download');
+                    return;
+                }
+                
+                const csvContent = convertToCSV(track, playlists);
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                
+                // Create sanitized filename
+                const sanitizedTrackName = track.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                const filename = `${service}_${sanitizedTrackName}.csv`;
+                
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', filename);
+                link.style.visibility = 'hidden';
+                
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+            
+            // Set up download button click handlers
+            Object.keys(downloadButtons).forEach(service => {
+                if (downloadButtons[service]) {
+                    downloadButtons[service].addEventListener('click', () => {
+                        downloadCSV(service);
+                    });
+                }
+            });
+                    
+            function performSearch() {
+                const query = searchInput.value.trim();
+                
+                if (!query || isSearching) {
+                    return;
+                }
+                
+                // Set searching flag to true
+                isSearching = true;
+                
+                // Disable other tabs during search
+                setTabsEnabled(false);
+                
+                // Get relevant containers for current service
+                const loadingContainer = loadingContainers[currentService];
+                const resultsContainer = resultsContainers[currentService];
+                const noResultsContainer = noResultsContainers[currentService];
+                const trackInfoContainer = trackInfoContainers[currentService];
+                const downloadContainer = downloadContainers[currentService];
+                const downloadButton = downloadButtons[currentService];
+                
+                // Check if containers exist
+                if (!loadingContainer || !resultsContainer || !noResultsContainer || !trackInfoContainer) {
+                    console.error(`Missing containers for ${currentService} service`);
+                    isSearching = false;
+                    setTabsEnabled(true);
+                    return;
+                }
+                
+                // Show loading spinner
+                trackInfoContainer.style.display = 'none';
+                resultsContainer.style.display = 'none';
+                noResultsContainer.style.display = 'none';
+                if (downloadContainer) {
+                    downloadContainer.style.display = 'none';
+                }
+                loadingContainer.style.display = 'flex';
+                
+                // Reset download button
+                if (downloadButton) {
+                    downloadButton.disabled = true;
+                }
+                
+                // Determine which endpoint to use based on active tab
+                const endpoint = currentService === 'apple' ? '/search_apple' : '/search';
+                
+                // Send request to backend
+                fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ query: query })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Hide loading spinner
+                    loadingContainer.style.display = 'none';
+                    
+                    if (data.error) {
+                        showNoResults(currentService);
+                        // Reset searching flag and re-enable tabs
+                        isSearching = false;
+                        setTabsEnabled(true);
+                        return;
+                    }
+                    
+                    // Store the results for CSV download
+                    searchResults[currentService].track = data.track || null;
+                    searchResults[currentService].playlists = data.playlists || [];
+                    
+                    // Show track info if available
+                    if (data.track) {
+                        displayTrackInfo(data.track, currentService);
+                    }
+                    
+                    // Show playlists if available
+                    if (data.playlists && data.playlists.length > 0) {
+                        displayResults(data.playlists, currentService);
+                        
+                        // Enable download button if we have results
+                        if (downloadContainer) {
+                            downloadContainer.style.display = 'flex';
+                        }
+                        if (downloadButton) {
+                            downloadButton.disabled = false;
+                        }
+                    } else {
+                        showNoResults(currentService);
+                    }
+                    
+                    // Reset searching flag and re-enable tabs
+                    isSearching = false;
+                    setTabsEnabled(true);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    loadingContainer.style.display = 'none';
+                    showNoResults(currentService);
+                    
+                    // Reset searching flag and re-enable tabs
+                    isSearching = false;
+                    setTabsEnabled(true);
+                });
+            }
+            
+            function showNoResults(service) {
+                // Get the appropriate container
+                const noResultsContainer = noResultsContainers[service];
+                if (!noResultsContainer) return;
+                
+                // Update the no results message based on the service
+                const serviceName = service === 'apple' ? 'Apple Music' : 'Spotify';
+                noResultsContainer.innerHTML = `
+                    <h3>No Editorial Playlists Found</h3>
+                    <p>This track doesn't appear in any ${serviceName} editorial playlists, or we couldn't find it. Try another song!</p>
+                `;
+                
+                noResultsContainer.style.display = 'block';
+                resultsContainers[service].style.display = 'none';
+                
+                // Hide download button for this service
+                if (downloadContainers[service]) {
+                    downloadContainers[service].style.display = 'none';
+                }
+            }
+            
+            function displayTrackInfo(track, service) {
+                // Get the appropriate container
+                const trackInfoContainer = trackInfoContainers[service];
+                if (!trackInfoContainer) return;
+                
+                // Format the image URL correctly
+                const imageUrl = formatImageUrl(track.image, service);
+                
+                // Customize for the specific service
+                const serviceName = service === 'apple' ? 'Apple Music' : 'Spotify';
+                const serviceColor = service === 'apple' ? 'var(--apple-red)' : 'var(--coral)';
+                
+                trackInfoContainer.innerHTML = `
+                    <img src="${imageUrl}" alt="${track.name}" class="track-image" onerror="this.src='https://via.placeholder.com/100'">
+                    <div class="track-details">
+                        <h3>${track.name}</h3>
+                        <p>By ${track.artists}</p>
+                        <p>Album: ${track.album || 'Unknown'}</p>
+                        <span class="track-badge" style="background-color: ${serviceColor}20; color: ${serviceColor}">
+                            Found in ${track.playlist_count} ${serviceName} editorial playlists
+                        </span>
+                    </div>
+                `;
+                trackInfoContainer.style.display = 'flex';
+            }
+            
+            function displayResults(playlists, service) {
+                // Get the appropriate container
+                const resultsContainer = resultsContainers[service];
+                if (!resultsContainer) return;
+                
+                resultsContainer.innerHTML = '';
+                
+                // Customize links based on service
+                const serviceName = service === 'apple' ? 'Apple Music' : 'Spotify';
+                
+                playlists.forEach(playlist => {
+                    // Format the image URL correctly based on service
+                    const imageUrl = formatImageUrl(playlist.image, service);
+                    
+                    const card = document.createElement('div');
+                    card.className = 'playlist-card';
+                    
+                    // HTML structure for rectangular cards with better organization
+                    card.innerHTML = `
+                        <img src="${imageUrl}" alt="${playlist.name}" class="playlist-image" onerror="this.src='https://via.placeholder.com/300x169'">
+                        <div class="playlist-info">
+                            <div>
+                                <h3 class="playlist-name">${playlist.name}</h3>
+                                <p class="playlist-description">${playlist.description || `${serviceName} editorial playlist`}</p>
+                            </div>
+                            <div class="playlist-actions">
+                                <div class="playlist-meta">
+                                    ${playlist.tracks_count ? `<span class="playlist-tracks">${playlist.tracks_count} tracks</span>` : ''}
+                                    ${playlist.followers ? `<span class="playlist-followers">${formatFollowers(playlist.followers)}</span>` : ''}
+                                </div>
+                                <a href="${playlist.external_url}" target="_blank" class="${service}-link">Open in ${serviceName}</a>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Add click event to open link
+                    card.addEventListener('click', function(e) {
+                        if (!e.target.classList.contains(`${service}-link`)) {
+                            window.open(playlist.external_url, '_blank');
+                        }
+                    });
+                    
+                    resultsContainer.appendChild(card);
+                });
+                
+                resultsContainer.style.display = 'grid';
+            }
+        });
+    </script>    
+</body>
+</html>
